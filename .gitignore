@@ -1,0 +1,26 @@
+# JavaScript dependencies and generated frontend output
+node_modules/
+dist/
+
+# Tauri / Rust build output (Cargo.lock is intentionally tracked)
+src-tauri/target/
+src-tauri/gen/
+src-tauri/.tauri/
+
+# Local verification artifacts and logs
+output/
+.playwright-cli/
+*.log
+
+# Python caches left by legacy tooling
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# Local configuration and operating-system files
+.env
+.env.*
+!.env.example
+Thumbs.db
+Desktop.ini
+.wrangler/

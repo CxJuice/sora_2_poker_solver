@@ -151,7 +151,7 @@ fn game2_dealer_finish(counts: [u8; 10], hard: u8, aces: u8, ctx: &mut Game2Cont
     let mut result = vec![0.0; 22];
     if total > 21 {
         result[0] = 1.0;
-    } else if total > 17 {
+    } else if total >= 17 {
         result[total as usize] = 1.0;
     } else {
         for (value, q, next) in game2_transitions(&counts) {
@@ -235,6 +235,7 @@ fn game2_plan_state(
     counts: [u8; 10],
     up: u8,
     ctx: &mut Game2Context,
+    can_double: bool,
 ) -> (String, Game2Plan) {
     let (score, _) = game2_score(player);
     if score > 21 {
@@ -250,7 +251,8 @@ fn game2_plan_state(
         return ("stand".into(), game2_stand(player, counts, up, ctx));
     }
     let key = format!(
-        "{}/{}/{}/{}/{}/{}",
+        "{}/{}/{}/{}/{}/{}/{}",
+        u8::from(can_double),
         player.hard,
         player.aces,
         player.count,
@@ -265,32 +267,35 @@ fn game2_plan_state(
     let hit_branches = game2_transitions(&counts)
         .into_iter()
         .map(|(value, q, next)| {
-            let (_, plan) = game2_plan_state(game2_after_draw(player, value), next, up, ctx);
+            let (_, plan) = game2_plan_state(game2_after_draw(player, value), next, up, ctx, false);
             (q, plan)
         })
         .collect();
     let hit = game2_blend(hit_branches);
-    let double_branches = game2_transitions(&counts)
-        .into_iter()
-        .map(|(value, q, next)| {
-            let next_player = game2_after_draw(player, value);
-            let (next_score, _) = game2_score(next_player);
-            let plan = if next_score > 21 {
-                game2_terminal("bust", 0.0, 2.0)
-            } else {
-                let settled = game2_stand(next_player, next, up, ctx);
-                Game2Plan {
-                    returned: settled.returned * 2.0,
-                    stake: 2.0,
-                    net_ev: settled.returned * 2.0 - 2.0,
-                    ..settled
-                }
-            };
-            (q, plan)
-        })
-        .collect();
-    let double = game2_blend(double_branches);
-    let actions = [("stand", stand), ("hit", hit), ("double", double)];
+    let mut actions = vec![("stand", stand), ("hit", hit)];
+    if can_double {
+        let double_branches = game2_transitions(&counts)
+            .into_iter()
+            .map(|(value, q, next)| {
+                let next_player = game2_after_draw(player, value);
+                let (next_score, _) = game2_score(next_player);
+                let plan = if next_score > 21 {
+                    game2_terminal("bust", 0.0, 2.0)
+                } else {
+                    let settled = game2_stand(next_player, next, up, ctx);
+                    Game2Plan {
+                        returned: settled.returned * 2.0,
+                        stake: 2.0,
+                        net_ev: settled.returned * 2.0 - 2.0,
+                        ..settled
+                    }
+                };
+                (q, plan)
+            })
+            .collect();
+        let double = game2_blend(double_branches);
+        actions.push(("double", double));
+    }
     let best = actions
         .iter()
         .max_by(|a, b| a.1.net_ev.total_cmp(&b.1.net_ev))
@@ -508,30 +513,32 @@ fn solve_game2(player: Vec<String>, dealer: String) -> Result<Game2StateResult, 
             .into_iter()
             .map(|(value, q, next)| {
                 let (_, plan) =
-                    game2_plan_state(game2_after_draw(state, value), next, up, &mut context);
+                    game2_plan_state(game2_after_draw(state, value), next, up, &mut context, false);
                 (q, plan)
             })
             .collect();
         results.insert("hit".into(), game2_blend(hit_branches));
-        let double_branches = game2_transitions(&counts)
-            .into_iter()
-            .map(|(value, q, next)| {
-                let next_player = game2_after_draw(state, value);
-                let plan = if game2_score(next_player).0 > 21 {
-                    game2_terminal("bust", 0.0, 2.0)
-                } else {
-                    let settled = game2_stand(next_player, next, up, &mut context);
-                    Game2Plan {
-                        returned: settled.returned * 2.0,
-                        stake: 2.0,
-                        net_ev: settled.returned * 2.0 - 2.0,
-                        ..settled
-                    }
-                };
-                (q, plan)
-            })
-            .collect();
-        results.insert("double".into(), game2_blend(double_branches));
+        if state.count == 2 {
+            let double_branches = game2_transitions(&counts)
+                .into_iter()
+                .map(|(value, q, next)| {
+                    let next_player = game2_after_draw(state, value);
+                    let plan = if game2_score(next_player).0 > 21 {
+                        game2_terminal("bust", 0.0, 2.0)
+                    } else {
+                        let settled = game2_stand(next_player, next, up, &mut context);
+                        Game2Plan {
+                            returned: settled.returned * 2.0,
+                            stake: 2.0,
+                            net_ev: settled.returned * 2.0 - 2.0,
+                            ..settled
+                        }
+                    };
+                    (q, plan)
+                })
+                .collect();
+            results.insert("double".into(), game2_blend(double_branches));
+        }
     }
     let recommended = ["stand", "hit", "double"]
         .iter()

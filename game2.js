@@ -1,5 +1,5 @@
 // Game 2 follows the rules documented in game2/game2_rules.md.
-// The dealer draws until the hand total is greater than 17.
+// The dealer draws until the hand total reaches 17.
 
 const GAME2_RANKS = "23456789TJQKA";
 const GAME2_SUITS = [
@@ -153,7 +153,7 @@ function game2DealerFinish(counts, hard, aces, context) {
   const total = hard + (aces > 0 && hard + 10 <= 21 ? 10 : 0);
   const result = Array(22).fill(0);
   if (total > 21) result[0] = 1;
-  else if (total > 17) result[total] = 1;
+  else if (total >= 17) result[total] = 1;
   else {
     for (const transition of game2DrawTransitions(counts)) {
       const next = game2DealerFinish(transition.counts, hard + transition.value, aces + (transition.value === 1 ? 1 : 0), context);
@@ -204,23 +204,23 @@ function game2DoublePlan(player, counts, upValue, context) {
 function game2HitPlan(player, counts, upValue, context) {
   const branches = game2DrawTransitions(counts).map((transition) => [
     transition.probability,
-    game2PlanState(game2PlayerAfterDraw(player, transition.value), transition.counts, upValue, context).plan,
+    game2PlanState(game2PlayerAfterDraw(player, transition.value), transition.counts, upValue, context, false).plan,
   ]);
   return branches.length ? game2BlendPlans(branches) : game2StandPlan(player, counts, upValue, context);
 }
 
-function game2PlanState(player, counts, upValue, context) {
+function game2PlanState(player, counts, upValue, context, canDouble = true) {
   const score = game2ScoreState(player);
   if (score.total > 21) return { action: "bust", plan: game2TerminalPlan("bust") };
   if (player.count >= 7 && score.total < 21) return { action: "win", plan: game2TerminalPlan("win", game2PayoutMultiplierState(player)) };
   if (score.total === 21 || player.count >= 7) return { action: "stand", plan: game2StandPlan(player, counts, upValue, context) };
-  const key = `${player.hard}/${player.aces}/${player.count}/${player.sevens}/${player.natural}/${game2CountsKey(counts)}`;
+  const key = `${canDouble ? 1 : 0}/${player.hard}/${player.aces}/${player.count}/${player.sevens}/${player.natural}/${game2CountsKey(counts)}`;
   if (context.policyCache.has(key)) return context.policyCache.get(key);
   const actions = {
     stand: game2StandPlan(player, counts, upValue, context),
     hit: game2HitPlan(player, counts, upValue, context),
-    double: game2DoublePlan(player, counts, upValue, context),
   };
+  if (canDouble) actions.double = game2DoublePlan(player, counts, upValue, context);
   const action = Object.entries(actions).sort(([, left], [, right]) => right.netEv - left.netEv)[0][0];
   const result = { action, plan: actions[action] };
   context.policyCache.set(key, result);
@@ -239,7 +239,7 @@ function game2PlanForCards(playerCards, dealerCard, onProgress) {
     : {
       stand: game2StandPlan(player, counts, upValue, context),
       hit: game2HitPlan(player, counts, upValue, context),
-      double: game2DoublePlan(player, counts, upValue, context),
+      ...(player.count === 2 ? { double: game2DoublePlan(player, counts, upValue, context) } : {}),
     };
   const recommended = Object.entries(results).sort(([, left], [, right]) => right.netEv - left.netEv)[0][0];
   return { results, recommended, policyStates: context.policyCache.size, dealerStates: context.dealerCache.size };

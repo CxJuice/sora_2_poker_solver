@@ -213,7 +213,7 @@ h1 { text-align:left; }
 .profit-negative { color:var(--loss) !important; }
 .material-symbols-rounded { font-family:"Material Symbols Rounded"; font-weight:normal; font-style:normal; line-height:1; white-space:nowrap; }
 @media (max-width:900px) {
-  .game2-hand-slot .selected-hand .card { width:120px; height:169px; }
+  .game2-hand-slot .selected-hand .card { width:100px; height:141px; }
 }
 @media (max-width:650px) {
   .game-tab { padding:9px 12px; font-size:13px; }
@@ -222,7 +222,7 @@ h1 { text-align:left; }
   .deck-group-title { margin-bottom:6px; font-size:14px; }
   .deck-group-cards { grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
   .deck-card { height:auto; border-radius:4px; }
-  .game2-hand-slot .selected-hand .card { width:84px; height:118px; }
+  .game2-hand-slot .selected-hand .card { width:72px; height:101px; }
   .selected-hand { height:auto; min-height:132px; overflow:visible; flex-wrap:wrap; align-content:center; justify-content:center; }
   #selected-hand { position:sticky; top:10px; z-index:5; background:var(--panel-light); box-shadow:0 8px 20px rgb(0 0 0 / .28); }
   .game2-hand-grid { display:contents; }

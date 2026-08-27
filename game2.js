@@ -294,7 +294,9 @@ function game2RenderDeck() {
       const button = document.createElement("button");
       button.type = "button";
       button.className = `deck-card${GAME2_RED_SUITS.has(card[1]) ? " red" : ""}${selected.has(card) ? " selected" : ""}`;
-      button.disabled = selected.has(card) || maximumReached;
+      // Selected cards remain clickable so they can be removed from the hand;
+      // only unselected cards are blocked after reaching the hand limit.
+      button.disabled = !selected.has(card) && maximumReached;
       button.innerHTML = `<img src="${game2CardImagePath(card)}" alt="${game2CardLabel(card)}" loading="lazy" draggable="false">`;
       button.setAttribute("aria-label", game2CardLabel(card));
       button.addEventListener("click", () => game2ToggleCard(card));

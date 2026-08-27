@@ -5,5 +5,5 @@
   "identifier": "com.sora2nd.cardcounter",
   "build": { "beforeBuildCommand": "npm run desktop:build-web", "frontendDist": "../dist" },
   "app": { "withGlobalTauri": true, "windows": [{ "title": "空之轨迹2nd 算牌器", "width": 1200, "height": 900, "minWidth": 800, "minHeight": 600 }] },
-  "bundle": { "active": true, "targets": ["nsis"] }
+  "bundle": { "active": true, "targets": ["nsis"], "icon": ["icons/icon.png"] }
 }
